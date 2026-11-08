@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Token dari DESIGN.md (Laut v1). Tint teal untuk deret pembanding/ramp grafik divalidasi skrip dataviz. */
+:root {
+  --bg: #edf4f5;
+  --surface: #ffffff;
+  --text: #12262b;
+  --text-muted: #48606a;
+  --primary: #0e4d5c;
+  --on-primary: #edf4f5;
+  --accent: #a84a14;
+  --border: #c5d6da;
+  --success: #1f6b45;
+  --danger: #a32a24;
+  --primary-tint: #e3eef0;
+  --chart-2: #437480;
+  --chart-3: #7398a0;
+  --chart-4: #9fb8be;
+  --grid: #e1eaec;
+  --radius-tag: 6px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-overlay: 18px;
+  --shadow-overlay: 0 10px 28px rgba(14, 77, 92, 0.16);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1a1e;
+    --surface: #15262b;
+    --text: #e6f0f2;
+    --text-muted: #9fb6bd;
+    --primary: #7cc6d6;
+    --on-primary: #0e1a1e;
+    --accent: #f0a070;
+    --border: #2a4249;
+    --success: #7fcb9c;
+    --danger: #f08b84;
+    --primary-tint: #1b3238;
+    --chart-2: #65a3b0;
+    --chart-3: #51838e;
+    --chart-4: #3e666f;
+    --grid: #213a40;
+    --shadow-overlay: 0 10px 28px rgba(0, 0, 0, 0.45);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0e1a1e;
+  --surface: #15262b;
+  --text: #e6f0f2;
+  --text-muted: #9fb6bd;
+  --primary: #7cc6d6;
+  --on-primary: #0e1a1e;
+  --accent: #f0a070;
+  --border: #2a4249;
+  --success: #7fcb9c;
+  --danger: #f08b84;
+  --primary-tint: #1b3238;
+  --chart-2: #65a3b0;
+  --chart-3: #51838e;
+  --chart-4: #3e666f;
+  --grid: #213a40;
+  --shadow-overlay: 0 10px 28px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-sea-bg text-sea-text font-sans antialiased;
+    line-height: 1.6;
+  }
+  h1,
+  h2,
+  h3 {
+    line-height: 1.25;
+    font-weight: 700;
+  }
+  /* R-39: pointer di semua kontrol aktif, not-allowed saat disabled */
+  a[href],
+  button,
+  summary,
+  select,
+  label[for],
+  [role="button"],
+  [role="tab"],
+  [role="switch"],
+  [role="menuitem"],
+  [role="option"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"],
+  input:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+  /* R-32: indikator fokus jelas di kedua tema */
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

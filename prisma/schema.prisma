@@ -1,0 +1,275 @@
+// Skema mengikuti prd/08-data-model.md.
+// Perubahan yang disetujui Product Owner (lihat docs/DECISIONS.md):
+//  - D5: OAuthTokens satu baris per grant Google (unik userId+provider+googleSubject), Channels.oauthTokenId.
+//  - D6: Videos.retentionCurve JSONB untuk kurva retensi.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  name             String
+  avatarUrl        String?
+  locale           String    @default("id") @db.VarChar(10)
+  timezone         String    @default("Asia/Jakarta") @db.VarChar(50)
+  defaultChannelId String?   @db.Uuid
+  lastLoginAt      DateTime? @db.Timestamptz
+  createdAt        DateTime  @default(now()) @db.Timestamptz
+  updatedAt        DateTime  @updatedAt @db.Timestamptz
+
+  defaultChannel Channel?     @relation("UserDefaultChannel", fields: [defaultChannelId], references: [id], onDelete: SetNull)
+  tokens         OAuthToken[]
+  channels       Channel[]    @relation("UserChannels")
+  reports        Report[]
+  aiInsights     AIInsight[]
+  competitors    Competitor[]
+
+  @@index([defaultChannelId])
+  @@map("Users")
+}
+
+model OAuthToken {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @db.Uuid
+  provider        String   @default("google") @db.VarChar(20)
+  googleSubject   String   @db.VarChar(64)
+  accessTokenEnc  String
+  refreshTokenEnc String
+  scopes          String[]
+  expiresAt       DateTime @db.Timestamptz
+  keyVersion      Int      @default(1)
+  iv              String
+  createdAt       DateTime @default(now()) @db.Timestamptz
+  updatedAt       DateTime @updatedAt @db.Timestamptz
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channels Channel[]
+
+  @@unique([userId, provider, googleSubject])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("OAuthTokens")
+}
+
+enum ChannelStatus {
+  ACTIVE
+  SYNCING
+  ERROR
+  REVOKED
+}
+
+model Channel {
+  id               String        @id @default(uuid()) @db.Uuid
+  userId           String        @db.Uuid
+  oauthTokenId     String?       @db.Uuid
+  youtubeChannelId String        @db.VarChar(30)
+  title            String
+  handle           String?       @db.VarChar(100)
+  thumbnailUrl     String?
+  status           ChannelStatus @default(ACTIVE)
+  syncError        String?
+  revokedAt        DateTime?     @db.Timestamptz
+  lastSyncAt       DateTime?     @db.Timestamptz
+  historySince     DateTime?     @db.Date
+  subscriberCache  Int           @default(0)
+  createdAt        DateTime      @default(now()) @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @db.Timestamptz
+
+  user        User               @relation("UserChannels", fields: [userId], references: [id], onDelete: Cascade)
+  oauthToken  OAuthToken?        @relation(fields: [oauthTokenId], references: [id], onDelete: SetNull)
+  defaultFor  User[]             @relation("UserDefaultChannel")
+  dailyStats  ChannelDailyStat[]
+  videos      Video[]
+  videoStats  VideoDailyStat[]
+  reports     Report[]
+  competitors Competitor[]
+  aiInsights  AIInsight[]
+  audienceStats ChannelAudienceStat[]
+
+  @@unique([userId, youtubeChannelId])
+  @@index([userId])
+  @@index([userId, status])
+  @@index([status, revokedAt])
+  @@index([youtubeChannelId])
+  @@map("Channels")
+}
+
+model ChannelDailyStat {
+  id               String   @id @default(uuid()) @db.Uuid
+  channelId        String   @db.Uuid
+  date             DateTime @db.Date
+  views            BigInt   @default(0)
+  subsGained       Int      @default(0)
+  subsLost         Int      @default(0)
+  subsNet          Int      @default(0)
+  watchTimeMinutes BigInt   @default(0)
+  estimatedRevenue Decimal? @db.Decimal(12, 2)
+  syncedAt         DateTime @default(now()) @db.Timestamptz
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, date])
+  @@index([channelId, date(sort: Desc)])
+  @@map("ChannelDailyStats")
+}
+
+model Video {
+  id              String    @id @default(uuid()) @db.Uuid
+  channelId       String    @db.Uuid
+  youtubeVideoId  String    @db.VarChar(20)
+  title           String
+  publishedAt     DateTime  @db.Timestamptz
+  durationSeconds Int       @default(0)
+  thumbnailUrl    String?
+  privacyStatus   String    @default("public") @db.VarChar(20)
+  tags            String[]  @default([])
+  retentionCurve  Json?
+  lastStatSyncAt  DateTime? @db.Timestamptz
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
+
+  channel    Channel          @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  dailyStats VideoDailyStat[]
+  aiInsights AIInsight[]
+
+  @@unique([channelId, youtubeVideoId])
+  @@index([channelId, publishedAt(sort: Desc)])
+  @@index([channelId, title])
+  @@index([youtubeVideoId])
+  @@map("Videos")
+}
+
+model VideoDailyStat {
+  id                     String   @id @default(uuid()) @db.Uuid
+  videoId                String   @db.Uuid
+  channelId              String   @db.Uuid
+  date                   DateTime @db.Date
+  views                  BigInt   @default(0)
+  likes                  Int      @default(0)
+  comments               Int      @default(0)
+  watchTimeMinutes       BigInt   @default(0)
+  avgViewDurationSeconds Float    @default(0)
+  impressions            BigInt   @default(0)
+  ctr                    Float    @default(0)
+  retentionAvgPct        Float?
+  trafficSource          Json?
+  syncedAt               DateTime @default(now()) @db.Timestamptz
+
+  video   Video   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, date])
+  @@index([videoId, date(sort: Desc)])
+  @@index([channelId, date(sort: Desc)])
+  @@index([channelId, views(sort: Desc)])
+  @@map("VideoDailyStats")
+}
+
+// Fase 2 (D7, perlu persetujuan PO): agregat audiens per channel per jendela (28/90 hari).
+// Hanya agregat, tidak ada data penonton perorangan. Satu baris per (channel, jenis, jendela).
+model ChannelAudienceStat {
+  id         String   @id @default(uuid()) @db.Uuid
+  channelId  String   @db.Uuid
+  kind       String   @db.VarChar(20) // AGE_GENDER | COUNTRY | DEVICE
+  windowDays Int
+  data       Json
+  syncedAt   DateTime @default(now()) @db.Timestamptz
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([channelId, kind, windowDays])
+  @@index([channelId])
+  @@map("ChannelAudienceStats")
+}
+
+// ---- Fase 2-3: tabel disiapkan sesuai Data Model, TANPA fitur/endpoint di MVP ----
+
+model Competitor {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  channelId        String   @db.Uuid
+  youtubeChannelId String   @db.VarChar(30)
+  title            String?
+  thumbnailUrl     String?
+  notes            String?
+  createdAt        DateTime @default(now()) @db.Timestamptz
+
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   Channel              @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  snapshots CompetitorSnapshot[]
+
+  @@unique([userId, channelId, youtubeChannelId])
+  @@index([userId, channelId])
+  @@map("Competitors")
+}
+
+model CompetitorSnapshot {
+  id              String   @id @default(uuid()) @db.Uuid
+  competitorId    String   @db.Uuid
+  snapshotDate    DateTime @db.Date
+  subscriberCount BigInt   @default(0)
+  viewCount       BigInt   @default(0)
+  videoCount      Int      @default(0)
+  topVideos       Json?
+  createdAt       DateTime @default(now()) @db.Timestamptz
+
+  competitor Competitor @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@unique([competitorId, snapshotDate])
+  @@index([competitorId, snapshotDate(sort: Desc)])
+  @@map("CompetitorSnapshots")
+}
+
+model Report {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @db.Uuid
+  channelId    String    @db.Uuid
+  name         String    @db.VarChar(150)
+  type         String    @db.VarChar(20)
+  format       String    @db.VarChar(10)
+  filters      Json      @default("{}")
+  scheduleCron String?   @db.VarChar(50)
+  recipients   String[]  @default([])
+  fileUrl      String?
+  status       String    @default("ACTIVE") @db.VarChar(20)
+  lastRunAt    DateTime? @db.Timestamptz
+  nextRunAt    DateTime? @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([userId, channelId])
+  @@index([nextRunAt])
+  @@map("Reports")
+}
+
+model AIInsight {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  channelId   String   @db.Uuid
+  videoId     String?  @db.Uuid
+  type        String   @db.VarChar(30)
+  inputPeriod Json
+  resultText  String
+  resultJson  Json?
+  model       String   @db.VarChar(50)
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  video   Video?  @relation(fields: [videoId], references: [id], onDelete: SetNull)
+
+  @@index([channelId, createdAt(sort: Desc)])
+  @@index([videoId, createdAt(sort: Desc)])
+  @@index([userId, type])
+  @@map("AIInsights")
+}

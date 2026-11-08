@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:unit
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: analitik
+          POSTGRES_PASSWORD: analitik
+          POSTGRES_DB: analitik
+        ports:
+          - 5434:5432
+        options: >-
+          --health-cmd "pg_isready -U analitik -d analitik"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6381:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Create isolated test database
+        env:
+          PGPASSWORD: analitik
+        run: psql -h localhost -p 5434 -U analitik -d analitik -c 'CREATE DATABASE analitik_test;'
+      - name: Apply Prisma migrations
+        env:
+          DATABASE_URL: postgresql://analitik:analitik@localhost:5434/analitik_test?schema=public
+        run: npx prisma migrate deploy
+      - run: npm run test:integration

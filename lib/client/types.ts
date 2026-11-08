@@ -1,0 +1,96 @@
+export type ChannelDto = {
+  id: string;
+  youtubeChannelId: string;
+  title: string;
+  handle: string | null;
+  thumbnailUrl: string | null;
+  subscriberCount: number;
+  isActive: boolean;
+  syncStatus: "pending" | "syncing" | "synced" | "error" | "revoked";
+  syncError: string | null;
+  needsReauth: boolean;
+  lastSyncedAt: string | null;
+  historySince: string | null;
+  progress: { step: string; done?: number; total?: number } | null;
+};
+export type Delta = { value: number | null; previous: number | null; deltaAbs: number | null; deltaPct: number | null };
+export type Period = { from: string; to: string; days: number; compareFrom: string; compareTo: string };
+export type MetricsDto = {
+  channelId: string;
+  period: Period;
+  hasData: boolean;
+  currentDays: number;
+  previousDays: number;
+  previousComplete: boolean;
+  includesPartialDays: boolean;
+  metrics: { views: Delta; subscribersNet: Delta; watchTimeHours: Delta; estRevenueUSD: Delta & { isEstimate: true } };
+  lastSyncedAt: string | null;
+  historySince: string | null;
+};
+export type PointDto = {
+  date: string;
+  views: number | null;
+  watchTimeHours: number | null;
+  subscribersNet: number | null;
+  partial: boolean;
+  previousDate: string | null;
+  previousViews: number | null;
+  previousWatchTimeHours: number | null;
+  previousSubscribersNet: number | null;
+};
+export type TimeseriesDto = { period: Period; points: PointDto[]; totals: { views: number; watchTimeHours: number; subscribersNet: number } };
+export type VideoRowDto = {
+  id: string;
+  youtubeVideoId: string;
+  title: string;
+  publishedAt: string;
+  durationSec: number;
+  isShort: boolean;
+  thumbnailUrl: string | null;
+  privacyStatus: string;
+  available: boolean;
+  hasStats: boolean;
+  views: number | null;
+  likes: number | null;
+  comments: number | null;
+  watchTimeHours: number | null;
+  ctrPct: number | null;
+  avgRetentionPct: number | null;
+  engagementPct: number | null;
+};
+
+export type DemographicsDto = {
+  requestedDays: number;
+  windowDays: number;
+  windowLabel: string;
+  syncedAt: string | null;
+  hasData: boolean;
+  coveragePct: number | null;
+  ageGroups: { key: string; label: string; pct: number; female: number; male: number; other: number }[];
+  gender: { key: string; label: string; pct: number }[];
+  countries: { code: string; name: string; views: number; watchTimeHours: number; viewsPct: number | null; watchPct: number | null }[];
+  devices: { key: string; label: string; views: number; pct: number }[];
+  summary: string | null;
+};
+export type HeatmapDto = {
+  hourlyAvailable: false;
+  matrix: number[][] | null;
+  note: string;
+  timezone: string;
+  window: { from: string; to: string; days: number };
+  daysWithData: number;
+  shortWindow: boolean;
+  weekdays: { day: number; label: string; daysObserved: number; avgViews: number | null; avgWatchTimeHours: number | null }[];
+  best: { views: { day: number; label: string } | null; watchTime: { day: number; label: string } | null };
+};
+export type TrafficDto = {
+  period: Period;
+  hasData: boolean;
+  totalViews: number;
+  pctSum: number;
+  videosCovered: number;
+  coveragePct: number | null;
+  top: string | null;
+  dominantVideos: { source: string; label: string; videoId: string; title: string; views: number; pct: number }[];
+  sources: { source: string; label: string; views: number; pct: number; previousViews: number | null; deltaPct: number | null }[];
+};

@@ -1,0 +1,15 @@
+# Lokal pengganti Supabase (Postgres) dan Upstash (Redis). Ganti DATABASE_URL/REDIS_URL untuk cloud.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: analitik
+      POSTGRES_PASSWORD: analitik
+      POSTGRES_DB: analitik
+    ports: ["5434:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+  redis:
+    image: redis:7-alpine
+    ports: ["6381:6379"]
+volumes:
+  pgdata:
