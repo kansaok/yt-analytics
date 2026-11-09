@@ -32,8 +32,11 @@ menampilkan banner "Mode data uji".
 4. Selama aplikasi berstatus "Testing" di Google, tambahkan akun penguji di OAuth consent screen.
 
 ## Pindah ke Supabase/Upstash
-Ganti `DATABASE_URL` (Supabase, connection pooling + `directUrl` bila perlu) dan `REDIS_URL` (Upstash `rediss://...`),
+Ganti `DATABASE_URL` (Supabase, connection pooling yang sesuai) dan `REDIS_URL` (Upstash `rediss://...`),
 lalu jalankan `npx prisma migrate deploy`.
+
+Untuk produksi, gunakan [DEPLOYMENT.md](DEPLOYMENT.md). Panduan tersebut menjelaskan URL Transaction Pooler Supabase untuk runtime Vercel,
+parameter Prisma `pgbouncer=true`, migration yang aman, Google OAuth, worker terpisah, dan pembagian tugas agent/user.
 
 ## Fase 2 (audiens)
 Halaman `/audience` (tab Demografi, Waktu optimal, Sumber traffic). Data demografi ditarik worker bersama sinkronisasi
